@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { getPackages, createPackage, updatePackage, deletePackage } from '../apiService';
 import Navbar from '../components/Navbar';
@@ -7,7 +7,7 @@ import { UserContext } from '../UserContext';
 
 const AdminDashboard = () => {
     const [packages, setPackages] = useState([]);
-    const [newPackage, setNewPackage] = useState({
+    const [formData, setFormData] = useState({
         name: "",
         price: "",
         days: "",
@@ -17,8 +17,10 @@ const AdminDashboard = () => {
         images: [],
     });
 
-    const [editPackage, setEditPackage] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentPackageId, setCurrentPackageId] = useState(null);
     const { user } = useContext(UserContext);
+    const formRef = useRef(null); // Ref for the form element
 
     useEffect(() => {
         fetchPackages();
@@ -33,33 +35,66 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleAddPackage = async () => {
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData({
+            ...formData,
+            [name]: value,
+        });
+    };
+
+    const handleFileChange = (e) => {
+        setFormData({
+            ...formData,
+            images: Array.from(e.target.files),
+        });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
         try {
-            const formData = new FormData();
-            formData.append('name', newPackage.name);
-            formData.append('description', newPackage.description);
-            formData.append('price', newPackage.price);
-            formData.append('days', newPackage.days);
-            formData.append('date', newPackage.date);
-            formData.append('itinerary', newPackage.itinerary);
+            const formDataToSend = new FormData();
+            formDataToSend.append('name', formData.name);
+            formDataToSend.append('description', formData.description);
+            formDataToSend.append('price', formData.price);
+            formDataToSend.append('days', formData.days);
+            formDataToSend.append('date', formData.date);
+            formDataToSend.append('itinerary', formData.itinerary);
 
-            newPackage.images.forEach((image) => {
-                formData.append('images', image);
+            formData.images.forEach((image) => {
+                formDataToSend.append('images', image);
             });
 
-            const createdPackage = await createPackage(formData);
-            setPackages([...packages, createdPackage]);
-            setNewPackage({
-                name: "",
-                price: "",
-                days: "",
-                date: "",
-                description: "",
-                itinerary: "",
-                images: [],
-            });
+            if (isEditing) {
+                const updatedPackage = await updatePackage(currentPackageId, formDataToSend);
+                setPackages(packages.map(pkg => (pkg.id === updatedPackage.id ? updatedPackage : pkg)));
+            } else {
+                const createdPackage = await createPackage(formDataToSend);
+                setPackages([...packages, createdPackage]);
+            }
+
+            resetForm();
         } catch (error) {
-            console.error('Error adding package:', error);
+            console.error('Error submitting package:', error);
+        }
+    };
+
+    const handleEditPackage = (pkg) => {
+        setFormData({
+            name: pkg.name,
+            price: pkg.price,
+            days: pkg.days,
+            date: pkg.date,
+            description: pkg.description,
+            itinerary: pkg.itinerary,
+            images: [],
+        });
+        setIsEditing(true);
+        setCurrentPackageId(pkg.id);
+
+        // Scroll to the form after setting the edit data
+        if (formRef.current) {
+            formRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     };
 
@@ -72,32 +107,18 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleEditPackage = (pkg) => {
-        setEditPackage(pkg);
-    };
-
-    const handleUpdatePackage = async () => {
-        try {
-            const formData = new FormData();
-            formData.append('name', editPackage.name);
-            formData.append('description', editPackage.description);
-            formData.append('price', editPackage.price);
-            formData.append('days', editPackage.days);
-            formData.append('date', editPackage.date);
-            formData.append('itinerary', editPackage.itinerary);
-
-            if (editPackage.images && editPackage.images.length > 0) {
-                editPackage.images.forEach((image) => {
-                    formData.append('images', image);
-                });
-            }
-
-            const updatedPackage = await updatePackage(editPackage.id, formData);
-            setPackages(packages.map(pkg => (pkg.id === updatedPackage.id ? updatedPackage : pkg)));
-            setEditPackage(null);
-        } catch (error) {
-            console.error('Error updating package:', error);
-        }
+    const resetForm = () => {
+        setFormData({
+            name: "",
+            price: "",
+            days: "",
+            date: "",
+            description: "",
+            itinerary: "",
+            images: [],
+        });
+        setIsEditing(false);
+        setCurrentPackageId(null);
     };
 
     const formatDate = (dateString) => {
@@ -115,118 +136,76 @@ const AdminDashboard = () => {
             <div className="container mt-5">
                 <h2 className="text-center fw-bold">Admin Dashboard - Manage Packages</h2>
 
-                {/* Add New Package Form */}
-                <div className="mb-4">
-                    <h4>Add New Package</h4>
-                    <input
-                        type="text"
-                        className="form-control mb-2"
-                        placeholder="Package Name"
-                        value={newPackage.name}
-                        onChange={(e) => setNewPackage({ ...newPackage, name: e.target.value })}
-                    />
-                    <input
-                        type="text"
-                        className="form-control mb-2"
-                        placeholder="Price"
-                        value={newPackage.price}
-                        onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })}
-                    />
-                    <input
-                        type="text"
-                        className="form-control mb-2"
-                        placeholder="Duration"
-                        value={newPackage.days}
-                        onChange={(e) => setNewPackage({ ...newPackage, days: e.target.value })}
-                    />
-                    <input
-                        type="date"
-                        className="form-control mb-2"
-                        value={newPackage.date}
-                        onChange={(e) => setNewPackage({ ...newPackage, date: e.target.value })}
-                    />
-                    <textarea
-                        className="form-control mb-2"
-                        placeholder="Description"
-                        value={newPackage.description}
-                        onChange={(e) => setNewPackage({ ...newPackage, description: e.target.value })}
-                        style={{ height: "50px" }}
-                    ></textarea>
-                    <textarea
-                        className="form-control mb-2"
-                        placeholder="Itinerary (e.g., hotel, flights, places to visit)"
-                        value={newPackage.itinerary}
-                        onChange={(e) => setNewPackage({ ...newPackage, itinerary: e.target.value })}
-                    ></textarea>
-                    <input
-                        type="file"
-                        className="form-control mb-2"
-                        onChange={(e) => setNewPackage({ ...newPackage, images: Array.from(e.target.files) })}
-                        multiple
-                    />
-                    <button className="btn btn-success" onClick={handleAddPackage}>
-                        Add Package
-                    </button>
-                </div>
-
-                {/* Edit Package Form */}
-                {editPackage && (
-                    <div className="mb-4">
-                        <h4>Edit Package</h4>
+                {/* Single Form for Add/Edit */}
+                <div className="mb-4" ref={formRef}> {/* Attach ref here */}
+                    <h4>{isEditing ? "Edit Package" : "Add New Package"}</h4>
+                    <form onSubmit={handleSubmit}>
                         <input
                             type="text"
                             className="form-control mb-2"
                             placeholder="Package Name"
-                            value={editPackage.name}
-                            onChange={(e) => setEditPackage({ ...editPackage, name: e.target.value })}
+                            name="name"
+                            value={formData.name}
+                            onChange={handleInputChange}
                         />
                         <input
                             type="text"
                             className="form-control mb-2"
                             placeholder="Price"
-                            value={editPackage.price}
-                            onChange={(e) => setEditPackage({ ...editPackage, price: e.target.value })}
+                            name="price"
+                            value={formData.price}
+                            onChange={handleInputChange}
                         />
                         <input
                             type="text"
                             className="form-control mb-2"
-                            placeholder="Duration"
-                            value={editPackage.days}
-                            onChange={(e) => setEditPackage({ ...editPackage, days: e.target.value })}
+                            placeholder="Duration (Days)"
+                            name="days"
+                            value={formData.days}
+                            onChange={handleInputChange}
                         />
                         <input
                             type="date"
                             className="form-control mb-2"
-                            value={editPackage.date}
-                            onChange={(e) => setEditPackage({ ...editPackage, date: e.target.value })}
+                            name="date"
+                            value={formData.date}
+                            onChange={handleInputChange}
                         />
                         <textarea
                             className="form-control mb-2"
                             placeholder="Description"
-                            value={editPackage.description}
-                            onChange={(e) => setEditPackage({ ...editPackage, description: e.target.value })}
+                            name="description"
+                            value={formData.description}
+                            onChange={handleInputChange}
                             style={{ height: "50px" }}
                         ></textarea>
                         <textarea
                             className="form-control mb-2"
                             placeholder="Itinerary (e.g., hotel, flights, places to visit)"
-                            value={editPackage.itinerary}
-                            onChange={(e) => setEditPackage({ ...editPackage, itinerary: e.target.value })}
+                            name="itinerary"
+                            value={formData.itinerary}
+                            onChange={handleInputChange}
                         ></textarea>
                         <input
                             type="file"
                             className="form-control mb-2"
-                            onChange={(e) => setEditPackage({ ...editPackage, images: Array.from(e.target.files) })}
+                            onChange={handleFileChange}
                             multiple
                         />
-                        <button className="btn btn-primary" onClick={handleUpdatePackage}>
-                            Update Package
+                        <button type="submit" className="btn btn-primary">
+                            {isEditing ? "Update Package" : "Add Package"}
                         </button>
-                        <button className="btn btn-secondary ms-2" onClick={() => setEditPackage(null)}>
-                            Cancel
-                        </button>
-                    </div>
-                )}
+                        {isEditing && (
+                            <button
+                                type="button"
+                                className="btn btn-secondary ms-2"
+                                onClick={resetForm}
+                            >
+                                Cancel
+                            </button>
+                        )}
+                    </form>
+                </div>
 
                 {/* Packages Table */}
                 <table className="table table-striped mt-4">
@@ -236,7 +215,7 @@ const AdminDashboard = () => {
                             <th>Price</th>
                             <th>Duration</th>
                             <th>Date</th>
-                            <th style={{ width: "150px" }}>Description</th>
+                            <th>Description</th>
                             <th>Itinerary</th>
                             <th>Image</th>
                             <th>Actions</th>
@@ -249,12 +228,28 @@ const AdminDashboard = () => {
                                 <td>{pkg.price}</td>
                                 <td>{pkg.days}</td>
                                 <td>{formatDate(pkg.date)}</td>
-                                <td style={{ maxWidth: "150px", wordWrap: "break-word", whiteSpace: "normal" }}>{pkg.description}</td>
-                                <td style={{ maxWidth: "150px", wordWrap: "break-word", whiteSpace: "normal" }}>{pkg.itinerary}</td>
-                                <td><img src={`http://localhost:8080/uploads/${pkg.imageUrls[0]}`} alt={pkg.name} style={{ width: "100px" }} /></td>
+                                <td style={{ maxWidth: "150px", wordWrap: "break-word" }}>{pkg.description}</td>
+                                <td style={{ maxWidth: "150px", wordWrap: "break-word" }}>{pkg.itinerary}</td>
                                 <td>
-                                    <button className="btn btn-danger btn-sm me-2" onClick={() => handleDeletePackage(pkg.id)}>Delete</button>
-                                    <button className="btn btn-primary btn-sm" onClick={() => handleEditPackage(pkg)}>Update</button>
+                                    <img
+                                        src={`http://localhost:8080/uploads/${pkg.imageUrls[0]}`}
+                                        alt={pkg.name}
+                                        style={{ width: "100px" }}
+                                    />
+                                </td>
+                                <td>
+                                    <button
+                                        className="btn btn-danger btn-sm me-2"
+                                        onClick={() => handleDeletePackage(pkg.id)}
+                                    >
+                                        Delete
+                                    </button>
+                                    <button
+                                        className="btn btn-primary btn-sm"
+                                        onClick={() => handleEditPackage(pkg)}
+                                    >
+                                        Update
+                                    </button>
                                 </td>
                             </tr>
                         ))}
