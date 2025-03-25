@@ -18,7 +18,7 @@ const AdminDashboard = () => {
     });
 
     const [editPackage, setEditPackage] = useState(null);
-    const { user } = useContext(UserContext); // Access user state
+    const { user } = useContext(UserContext);
 
     useEffect(() => {
         fetchPackages();
@@ -76,6 +76,30 @@ const AdminDashboard = () => {
         setEditPackage(pkg);
     };
 
+    const handleUpdatePackage = async () => {
+        try {
+            const formData = new FormData();
+            formData.append('name', editPackage.name);
+            formData.append('description', editPackage.description);
+            formData.append('price', editPackage.price);
+            formData.append('days', editPackage.days);
+            formData.append('date', editPackage.date);
+            formData.append('itinerary', editPackage.itinerary);
+
+            if (editPackage.images && editPackage.images.length > 0) {
+                editPackage.images.forEach((image) => {
+                    formData.append('images', image);
+                });
+            }
+
+            const updatedPackage = await updatePackage(editPackage.id, formData);
+            setPackages(packages.map(pkg => (pkg.id === updatedPackage.id ? updatedPackage : pkg)));
+            setEditPackage(null);
+        } catch (error) {
+            console.error('Error updating package:', error);
+        }
+    };
+
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', {
@@ -91,6 +115,7 @@ const AdminDashboard = () => {
             <div className="container mt-5">
                 <h2 className="text-center fw-bold">Admin Dashboard - Manage Packages</h2>
 
+                {/* Add New Package Form */}
                 <div className="mb-4">
                     <h4>Add New Package</h4>
                     <input
@@ -144,6 +169,66 @@ const AdminDashboard = () => {
                     </button>
                 </div>
 
+                {/* Edit Package Form */}
+                {editPackage && (
+                    <div className="mb-4">
+                        <h4>Edit Package</h4>
+                        <input
+                            type="text"
+                            className="form-control mb-2"
+                            placeholder="Package Name"
+                            value={editPackage.name}
+                            onChange={(e) => setEditPackage({ ...editPackage, name: e.target.value })}
+                        />
+                        <input
+                            type="text"
+                            className="form-control mb-2"
+                            placeholder="Price"
+                            value={editPackage.price}
+                            onChange={(e) => setEditPackage({ ...editPackage, price: e.target.value })}
+                        />
+                        <input
+                            type="text"
+                            className="form-control mb-2"
+                            placeholder="Duration"
+                            value={editPackage.days}
+                            onChange={(e) => setEditPackage({ ...editPackage, days: e.target.value })}
+                        />
+                        <input
+                            type="date"
+                            className="form-control mb-2"
+                            value={editPackage.date}
+                            onChange={(e) => setEditPackage({ ...editPackage, date: e.target.value })}
+                        />
+                        <textarea
+                            className="form-control mb-2"
+                            placeholder="Description"
+                            value={editPackage.description}
+                            onChange={(e) => setEditPackage({ ...editPackage, description: e.target.value })}
+                            style={{ height: "50px" }}
+                        ></textarea>
+                        <textarea
+                            className="form-control mb-2"
+                            placeholder="Itinerary (e.g., hotel, flights, places to visit)"
+                            value={editPackage.itinerary}
+                            onChange={(e) => setEditPackage({ ...editPackage, itinerary: e.target.value })}
+                        ></textarea>
+                        <input
+                            type="file"
+                            className="form-control mb-2"
+                            onChange={(e) => setEditPackage({ ...editPackage, images: Array.from(e.target.files) })}
+                            multiple
+                        />
+                        <button className="btn btn-primary" onClick={handleUpdatePackage}>
+                            Update Package
+                        </button>
+                        <button className="btn btn-secondary ms-2" onClick={() => setEditPackage(null)}>
+                            Cancel
+                        </button>
+                    </div>
+                )}
+
+                {/* Packages Table */}
                 <table className="table table-striped mt-4">
                     <thead>
                         <tr>
@@ -181,4 +266,4 @@ const AdminDashboard = () => {
     );
 };
 
-export default AdminDashboard;                  
+export default AdminDashboard;

@@ -3,13 +3,11 @@ package com.example.spring_cap;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/packages")
 public class PackageController {
-
     private final PackageService packageService;
 
     public PackageController(PackageService packageService) {
@@ -37,7 +35,7 @@ public class PackageController {
             @RequestParam int days,
             @RequestParam String date,
             @RequestParam String itinerary,
-            @RequestParam("images") List<MultipartFile> images) {
+            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
         return ResponseEntity.ok(packageService.updatePackage(id, name, description, price, days, date, itinerary, images));
     }
 

@@ -2,7 +2,6 @@ package com.example.spring_cap;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.nio.file.*;
 import java.util.List;
 import java.util.UUID;
@@ -10,7 +9,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class PackageService {
-
     private final PackageRepository packageRepository;
     private final String uploadDir = "uploads/";
 
@@ -27,7 +25,6 @@ public class PackageService {
         }
     }
 
-    // Save a new package
     public Package savePackage(String name, String description, double price, int days, String date, String itinerary, List<MultipartFile> images) {
         Package packageObj = new Package();
         packageObj.setName(name);
@@ -43,7 +40,6 @@ public class PackageService {
         return packageRepository.save(packageObj);
     }
 
-    // Update an existing package
     public Package updatePackage(Long id, String name, String description, double price, int days, String date, String itinerary, List<MultipartFile> images) {
         Package packageObj = packageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Package not found"));
@@ -63,23 +59,19 @@ public class PackageService {
         return packageRepository.save(packageObj);
     }
 
-    // Get all packages
     public List<Package> getAllPackages() {
         return packageRepository.findAll();
     }
 
-    // Get a package by ID
     public Package getPackageById(Long id) {
         return packageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Package not found"));
     }
 
-    // Delete a package by ID
     public void deletePackage(Long id) {
         packageRepository.deleteById(id);
     }
 
-    // Save an image and return its URL
     private String saveImage(MultipartFile file) {
         try {
             String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
